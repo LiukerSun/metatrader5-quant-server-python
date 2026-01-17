@@ -1,0 +1,746 @@
+openapi: 3.0.3
+info:
+  title: MetaTrader 5 Quant Server API
+  description: MT5量化交易服务器API文档
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5001
+    description: MT5 Flask API (本地)
+  - url: http://localhost:8000
+    description: Django API (本地)
+
+tags:
+  - name: Health
+    description: 健康检查接口
+  - name: Error
+    description: 错误处理接口
+  - name: Order
+    description: 订单管理接口
+  - name: Position
+    description: 持仓管理接口
+  - name: Data
+    description: 市场数据接口
+  - name: Symbol
+    description: 交易品种接口
+  - name: History
+    description: 历史记录接口
+  - name: Trade
+    description: Django交易管理接口
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: 健康检查
+      operationId: getHealth
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  mt5_connected:
+                    type: boolean
+                  mt5_initialized:
+                    type: boolean
+
+  /last_error:
+    get:
+      tags: [Error]
+      summary: 获取最后错误
+      operationId: getLastError
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    type: integer
+                  error_message:
+                    type: string
+
+  /order:
+    post:
+      tags: [Order]
+      summary: 发送市场订单
+      operationId: sendOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+
+  /close_position:
+    post:
+      tags: [Position]
+      summary: 平仓单个持仓
+      operationId: closePosition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClosePositionRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PositionCloseResponse'
+
+  /close_all_positions:
+    post:
+      tags: [Position]
+      summary: 平仓所有持仓
+      operationId: closeAllPositions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseAllPositionsRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloseAllResponse'
+
+  /modify_sl_tp:
+    post:
+      tags: [Position]
+      summary: 修改止损止盈
+      operationId: modifySlTp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifySlTpRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModifySlTpResponse'
+
+  /get_positions:
+    get:
+      tags: [Position]
+      summary: 获取开放持仓
+      operationId: getPositions
+      parameters:
+        - name: magic
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Position'
+
+  /positions_total:
+    get:
+      tags: [Position]
+      summary: 获取持仓总数
+      operationId: getPositionsTotal
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+
+  /fetch_data_pos:
+    get:
+      tags: [Data]
+      summary: 从位置获取数据
+      operationId: fetchDataPos
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            default: M1
+        - name: num_bars
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OHLCV'
+
+  /fetch_data_range:
+    get:
+      tags: [Data]
+      summary: 获取日期范围数据
+      operationId: fetchDataRange
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            default: M1
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OHLCV'
+
+  /symbol_info_tick/{symbol}:
+    get:
+      tags: [Symbol]
+      summary: 获取符号Tick信息
+      operationId: getSymbolInfoTick
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TickInfo'
+
+  /symbol_info/{symbol}:
+    get:
+      tags: [Symbol]
+      summary: 获取符号详细信息
+      operationId: getSymbolInfo
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymbolInfo'
+
+  /get_deal_from_ticket:
+    get:
+      tags: [History]
+      summary: 从Ticket获取交易信息
+      operationId: getDealFromTicket
+      parameters:
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+  /get_order_from_ticket:
+    get:
+      tags: [History]
+      summary: 从Ticket获取订单信息
+      operationId: getOrderFromTicket
+      parameters:
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    type: object
+
+  /history_deals_get:
+    get:
+      tags: [History]
+      summary: 获取交易历史
+      operationId: getHistoryDeals
+      parameters:
+        - name: from_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: position
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /history_orders_get:
+    get:
+      tags: [History]
+      summary: 获取订单历史
+      operationId: getHistoryOrders
+      parameters:
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  # ==================== Django API ====================
+
+  /v1/trades/:
+    get:
+      tags: [Trade]
+      summary: 获取交易列表
+      operationId: getTrades
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+        - name: ordering
+          in: query
+          schema:
+            type: string
+        - name: symbol
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [BUY, SELL]
+        - name: is_open
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeListResponse'
+
+  /v1/trades/{id}/:
+    get:
+      tags: [Trade]
+      summary: 获取单个交易详情
+      operationId: getTradeById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+
+  /v1/send_market_order/:
+    post:
+      tags: [Trade]
+      summary: 发送市场订单(Django)
+      operationId: djangoSendMarketOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DjangoOrderRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DjangoOrderResponse'
+
+  /v1/modify_sl_tp/:
+    post:
+      tags: [Trade]
+      summary: 修改止损止盈(Django)
+      operationId: djangoModifySlTp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DjangoModifySlTpRequest'
+      responses:
+        '201':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationResponse'
+
+components:
+  schemas:
+    OrderRequest:
+      type: object
+      required: [symbol, volume, type]
+      properties:
+        symbol:
+          type: string
+        volume:
+          type: number
+        type:
+          type: string
+          enum: [BUY, SELL]
+        deviation:
+          type: integer
+          default: 20
+        magic:
+          type: integer
+          default: 0
+        comment:
+          type: string
+        sl:
+          type: number
+        tp:
+          type: number
+
+    OrderResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            retcode:
+              type: integer
+            order:
+              type: integer
+            price:
+              type: number
+            symbol:
+              type: string
+
+    ClosePositionRequest:
+      type: object
+      required: [position]
+      properties:
+        position:
+          type: object
+          required: [type, ticket, symbol, volume]
+          properties:
+            type:
+              type: integer
+            ticket:
+              type: integer
+            symbol:
+              type: string
+            volume:
+              type: number
+
+    PositionCloseResponse:
+      $ref: '#/components/schemas/OrderResponse'
+
+    CloseAllPositionsRequest:
+      type: object
+      properties:
+        order_type:
+          type: string
+          enum: [BUY, SELL, all]
+          default: all
+        magic:
+          type: integer
+
+    CloseAllResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderResponse'
+
+    ModifySlTpRequest:
+      type: object
+      required: [position]
+      properties:
+        position:
+          type: integer
+        sl:
+          type: number
+        tp:
+          type: number
+
+    ModifySlTpResponse:
+      $ref: '#/components/schemas/OrderResponse'
+
+    Position:
+      type: object
+      properties:
+        ticket:
+          type: integer
+        time:
+          type: string
+          format: date-time
+        type:
+          type: integer
+        magic:
+          type: integer
+        symbol:
+          type: string
+        volume:
+          type: number
+        price_open:
+          type: number
+        sl:
+          type: number
+        tp:
+          type: number
+        price_current:
+          type: number
+        profit:
+          type: number
+
+    OHLCV:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        tick_volume:
+          type: integer
+
+    TickInfo:
+      type: object
+      properties:
+        bid:
+          type: number
+        ask:
+          type: number
+        last:
+          type: number
+        volume:
+          type: integer
+        time:
+          type: integer
+
+    SymbolInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        volume_min:
+          type: number
+        volume_max:
+          type: number
+        price_digits:
+          type: integer
+        spread:
+          type: number
+
+    Deal:
+      type: object
+      properties:
+        ticket:
+          type: integer
+        symbol:
+          type: string
+        type:
+          type: string
+        volume:
+          type: number
+        profit:
+          type: number
+
+    Trade:
+      type: object
+      properties:
+        id:
+          type: integer
+        transaction_broker_id:
+          type: string
+        symbol:
+          type: string
+        entry_time:
+          type: string
+          format: date-time
+        entry_price:
+          type: number
+        type:
+          type: string
+          enum: [BUY, SELL]
+        pnl:
+          type: number
+
+    TradeListResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+        previous:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Trade'
+
+    DjangoOrderRequest:
+      type: object
+      required: [symbol, volume, order_type]
+      properties:
+        symbol:
+          type: string
+        volume:
+          type: number
+        order_type:
+          type: string
+          enum: [BUY, SELL]
+        sl:
+          type: number
+        tp:
+          type: number
+
+    DjangoOrderResponse:
+      type: object
+      properties:
+        trade:
+          $ref: '#/components/schemas/Trade'
+
+    DjangoModifySlTpRequest:
+      type: object
+      required: [id, ticket, stop_loss, take_profit]
+      properties:
+        id:
+          type: integer
+        ticket:
+          type: integer
+        stop_loss:
+          type: number
+        take_profit:
+          type: number
+
+    MutationResponse:
+      type: object
+      properties:
+        mutation:
+          type: object
+          properties:
+            id:
+              type: integer
+            new_tp_price:
+              type: number
+            new_sl_price:
+              type: number
